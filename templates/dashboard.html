@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: Arial, sans-serif;
+      padding-top: 70px;
+    }
+    .navbar-brand {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .section-header {
+      margin-bottom: 20px;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .watchlist-table {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
+    }
+    .watchlist-table th {
+      background-color: #007bff;
+      color: #fff;
+    }
+    .chart-container {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .form-container {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .btn-primary {
+      background-color: #007bff;
+      border: none;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+    .list-group-item {
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="{% url 'index' %}">Stock Monitoring</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'dashboard' %}">Watchlist</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'profile' %}">Profile</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="{% url 'settings' %}">Settings</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-danger" href="{% url 'logout' %}">Logout</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="container mt-5">
+    <div class="row">
+      <!-- Watchlist Section -->
+      <div class="col-lg-8">
+        <h3 class="section-header">Your Watchlist</h3>
+        <table class="table table-bordered table-hover watchlist-table">
+          <thead>
+            <tr>
+              <th>Stock Symbol</th>
+              <th>Current Price</th>
+              <th>Price Threshold</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in watchlist %}
+            <tr>
+              <td>{{ item.symbol }}</td>
+              <td>
+                {% if item.current_price != 'N/A' %}
+                  ${{ item.current_price }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+              <td>
+                {% if item.price_threshold %}
+                  ${{ item.price_threshold }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-danger btn-sm remove-btn" data-stock-id="{{ item.stock_id }}">Remove</button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted">No stocks in your watchlist.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Notifications Section -->
+      <div class="col-lg-4">
+        <h3 class="section-header">Notifications</h3>
+        <div class="list-group">
+          {% for notification in notifications %}
+          <a href="#" class="list-group-item list-group-item-action">{{ notification.message }}</a>
+          {% empty %}
+          <p class="text-muted text-center">No notifications available.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <!-- Stock Chart Section -->
+      <div class="col-lg-8">
+        <h3 class="section-header">Stock Trend Analysis</h3>
+        <div id="chart-container" class="chart-container" style="height: 500px;"></div>
+      </div>
+
+      <!-- Add to Watchlist Form -->
+      <div class="col-lg-4">
+        <h3 class="section-header">Add Stock to Watchlist</h3>
+        <div class="form-container">
+          <form method="post" action="{% url 'add_to_watchlist' %}">
+            {% csrf_token %}
+            <div class="form-group">
+              <label for="stockSymbol">Stock Symbol</label>
+              <input type="text" class="form-control" id="stockSymbol" name="stock_symbol" placeholder="e.g., AAPL" required>
+            </div>
+            <div class="form-group">
+              <label for="priceThreshold">Price Threshold (Optional)</label>
+              <input type="text" class="form-control" id="priceThreshold" name="price_threshold" placeholder="e.g., 150.00">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Add to Watchlist</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const symbol = "AAPL";  // Replace with the desired stock symbol
+      fetch(`/candlestick-chart/${symbol}/`)
+        .then(response => response.json())
+        .then(data => {
+          const chart = JSON.parse(data.chart);
+          Plotly.newPlot('chart-container', chart.data, chart.layout);
+        })
+        .catch(error => console.error('Error loading chart:', error));
+    });
+
+    // Remove stock from watchlist
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.remove-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+          const stockId = button.getAttribute('data-stock-id');
+          fetch('/remove_from_watchlist/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ stock_id: stockId })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              button.closest('tr').remove();
+            } else {
+              console.error('Error removing stock:', data.error);
+            }
+          })
+          .catch(error => console.error('Error:', error));
+        });
+      });
+    });
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

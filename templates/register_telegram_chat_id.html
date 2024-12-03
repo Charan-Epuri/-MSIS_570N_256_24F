@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register Telegram Chat ID</title>
+</head>
+<body>
+    <h1>Register Telegram Chat ID</h1>
+    <form method="post">
+        {% csrf_token %}
+        <label for="chat_id">Telegram Chat ID:</label>
+        <input type="text" id="chat_id" name="chat_id" required>
+        <button type="submit">Save</button>
+    </form>
+</body>
+</html>
